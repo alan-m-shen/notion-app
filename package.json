@@ -1,0 +1,21 @@
+{
+  "name": "notion-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron",
+    "rebuild": "electron-rebuild -f -w electron-liquid-glass"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "electron": "^37.2.4",
+    "electron-liquid-glass": "^1.0.1"
+  },
+  "devDependencies": {
+    "electron-rebuild": "^3.2.9"
+  }
+}

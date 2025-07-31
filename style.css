@@ -1,0 +1,83 @@
+/* 基本重置和字体 */
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden; /* 防止出现滚动条 */
+    user-select: none; /* 禁止选择文本 */
+}
+
+/* 顶部标题栏/标签栏容器 */
+.title-bar {
+    height: 48px; /* 标签栏高度 */
+    -webkit-app-region: drag; /* 允许拖拽窗口 */
+    display: flex;
+    align-items: center;
+    padding-left: 80px; /* 为红绿灯留出空间 */
+    padding-right: 10px;
+}
+
+/* 标签容器 */
+.tabs-container {
+    display: flex;
+    flex-grow: 1;
+    height: 100%;
+    overflow-x: auto;
+}
+
+/* 单个标签 */
+.tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 12px;
+    margin: 8px 2px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    -webkit-app-region: no-drag; /* 标签本身不可拖拽窗口 */
+    transition: background-color 0.2s;
+    flex-shrink: 0; /* 防止标签被压缩 */
+    max-width: 200px;
+}
+
+.tab:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tab.active {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tab-close {
+    margin-left: 8px;
+    padding: 4px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+.tab-close:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* 新建标签按钮 */
+.add-tab-btn {
+    -webkit-app-region: no-drag;
+    padding: 4px 8px;
+    margin-left: 5px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.6);
+}
+.add-tab-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
