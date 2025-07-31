@@ -1,3 +1,33 @@
+/* 此文件控制“外壳”应用（主要是标签栏）的样式。
+  This file styles the shell application (mainly the tab bar).
+*/
+
+/* --- 1. 定义颜色变量 (Define Color Variables) --- */
+:root {
+  /* 默认是深色模式的颜色 */
+  --tab-bg: rgba(255, 255, 255, 0.1);
+  --tab-bg-hover: rgba(255, 255, 255, 0.2);
+  --tab-bg-active: rgba(255, 255, 255, 0.25);
+  --tab-text-color: rgba(255, 255, 255, 0.85);
+  --tab-text-color-active: white;
+  --add-btn-color: rgba(255, 255, 255, 0.7);
+}
+
+/* 当系统为浅色模式时，使用这些颜色 */
+@media (prefers-color-scheme: light) {
+  :root {
+    --tab-bg: rgba(0, 0, 0, 0.05);
+    --tab-bg-hover: rgba(0, 0, 0, 0.1);
+    --tab-bg-active: rgba(0, 0, 0, 0.12);
+    --tab-text-color: rgba(0, 0, 0, 0.8);
+    --tab-text-color-active: black;
+    --add-btn-color: rgba(0, 0, 0, 0.5);
+  }
+}
+
+
+/* --- 2. 应用样式 (Apply Styles) --- */
+
 /* 基本重置和字体 */
 body, html {
     margin: 0;
@@ -6,17 +36,18 @@ body, html {
     height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     overflow: hidden; /* 防止出现滚动条 */
-    user-select: none; /* 禁止选择文本 */
+    /* ✅ 修正：移除了 user-select: none; 来解决粘贴问题 */
 }
 
 /* 顶部标题栏/标签栏容器 */
 .title-bar {
-    height: 48px; /* 标签栏高度 */
+    height: 48px;
     -webkit-app-region: drag; /* 允许拖拽窗口 */
     display: flex;
     align-items: center;
     padding-left: 80px; /* 为红绿灯留出空间 */
     padding-right: 10px;
+    box-sizing: border-box;
 }
 
 /* 标签容器 */
@@ -35,49 +66,19 @@ body, html {
     padding: 0 10px 0 12px;
     margin: 8px 2px;
     border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.8);
-    -webkit-app-region: no-drag; /* 标签本身不可拖拽窗口 */
-    transition: background-color 0.2s;
-    flex-shrink: 0; /* 防止标签被压缩 */
+    background-color: var(--tab-bg); /* 使用变量 */
+    color: var(--tab-text-color); /* 使用变量 */
+    -webkit-app-region: no-drag;
+    transition: background-color 0.2s, color 0.2s;
+    flex-shrink: 0;
     max-width: 200px;
+    cursor: pointer;
 }
 
 .tab:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--tab-bg-hover); /* 使用变量 */
 }
 
 .tab.active {
-    background-color: rgba(255, 255, 255, 0.3);
-    color: white;
-}
-
-.tab-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.tab-close {
-    margin-left: 8px;
-    padding: 4px;
-    border-radius: 50%;
-    cursor: pointer;
-}
-.tab-close:hover {
-    background-color: rgba(0, 0, 0, 0.2);
-}
-
-/* 新建标签按钮 */
-.add-tab-btn {
-    -webkit-app-region: no-drag;
-    padding: 4px 8px;
-    margin-left: 5px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 20px;
-    color: rgba(255, 255, 255, 0.6);
-}
-.add-tab-btn:hover {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--tab-bg-active); /* 使用变量 */
 }

@@ -3,7 +3,6 @@ const addTabBtn = document.getElementById('add-tab');
 let activeTabElement = null;
 
 // --- DOM 操作 ---
-
 function createTabElement(tab) {
     const tabEl = document.createElement('div');
     tabEl.className = 'tab';
@@ -20,15 +19,14 @@ function createTabElement(tab) {
     tabEl.append(titleEl, closeBtn);
     tabsContainer.append(tabEl);
     
-    // 切换标签
     tabEl.addEventListener('click', (e) => {
         if (e.target.className !== 'tab-close') {
             switchToTab(tab.id);
         }
     });
     
-    // 关闭标签
-    closeBtn.addEventListener('click', () => {
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 防止触发父元素的点击事件
         closeTab(tab.id);
     });
 
@@ -47,9 +45,8 @@ function setActiveTab(tabId) {
 }
 
 // --- 与主进程的通信 ---
-
-async function addNewTab() {
-    const tab = await window.electronAPI.newTab();
+async function addNewTab(url) {
+    const tab = await window.electronAPI.newTab(url);
     createTabElement(tab);
     switchToTab(tab.id);
 }
@@ -65,7 +62,6 @@ function closeTab(tabId) {
         tabEl.remove();
         window.electronAPI.closeTab(tabId);
 
-        // 如果关闭的是当前激活的tab, 切换到最后一个tab
         if (activeTabElement === tabEl) {
             const lastTab = tabsContainer.querySelector('.tab:last-child');
             if (lastTab) {
@@ -76,16 +72,13 @@ function closeTab(tabId) {
 }
 
 // --- 事件监听 ---
+addTabBtn.addEventListener('click', () => addNewTab());
 
-addTabBtn.addEventListener('click', addNewTab);
-
-// 监听主进程创建的新标签页（例如，从外部链接打开）
 window.electronAPI.onTabCreated((tab) => {
     createTabElement(tab);
     switchToTab(tab.id);
 });
 
-// 监听标签页标题更新
 window.electronAPI.onTabUpdated((tabId, details) => {
     const titleEl = document.querySelector(`.tab[data-tab-id='${tabId}'] .tab-title`);
     if (titleEl && details.title) {
@@ -93,6 +86,8 @@ window.electronAPI.onTabUpdated((tabId, details) => {
     }
 });
 
+// 监听菜单栏创建新标签的请求
+window.electronAPI.onNewTabFromMenu(() => addNewTab());
 
 // 启动时自动创建一个标签页
-document.addEventListener('DOMContentLoaded', addNewTab);
+document.addEventListener('DOMContentLoaded', () => addNewTab());

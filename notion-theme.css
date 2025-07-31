@@ -1,0 +1,120 @@
+/*
+  在这里管理所有用于注入 Notion 页面的自定义样式
+  This file contains all custom styles to be injected into Notion pages.
+*/
+
+/* 1. 颜色与字体变量 (Color & Font Variables)*/
+:root {
+  --theme--font_sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, "Apple Color Emoji", sans-serif;
+  --theme--font_serif: Lyon-Text, Georgia, "Songti SC", SimSun, serif;
+  --theme--font_mono: iawriter-mono, Nitti, Menlo, Courier, monospace;
+  --theme--font_code: var(--theme--font_mono);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --color-bg-global: rgba(255, 0, 187, 0);            /* 全局背景 */
+    --color-bg-main: rgba(255, 255, 255, 0.65);       /* 内容主区域背景 */
+    --color-bg-main-solid: rgb(255, 255, 255);        /* 内容主区域纯白背景 (用于覆盖) */
+    --color-text-heading: rgb(175, 54, 23);           /* 标题颜色 */
+    --color-overlay-mask: rgba(0, 0, 0, 0.2);         /* 遮罩层颜色 */
+    --color-bg-callout-blue: rgba(154, 192, 236, 0.65);
+    --color-text-callout-blue: rgb(18, 79, 150);
+    --color-bg-callout-yellow: rgba(233, 226, 160, 0.97);
+    --color-text-callout-yellow: rgb(131, 88, 7);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg-global: rgba(28, 28, 30, 0);                /* 全局背景 */
+    --color-bg-main: rgba(44, 44, 46, 0.5);            /* 内容主区域背景 */
+    --color-bg-main-solid: rgb(44, 44, 46);            /* 内容主区域纯色背景 (用于覆盖) */
+    --color-text-heading: rgb(230, 168, 137);          /* 标题颜色 */
+    --color-overlay-mask: rgba(0, 0, 0, 0.4);          /* 遮罩层颜色 */
+    --color-bg-callout-blue: rgba(18, 79, 150, 0.5);
+    --color-text-callout-blue: rgb(170, 210, 255);
+    --color-bg-callout-yellow: rgba(131, 88, 7, 0.5);
+    --color-text-callout-yellow: rgb(255, 235, 179);
+  }
+}
+
+div.notion-selectable.notion-callout-block > div > div:nth-child(1) {
+  background: var(--color-bg-main-solid) !important;
+}
+
+/* 2. 全局样式 (Global Styles)*/
+html {
+  background: var(--color-bg-global) !important;
+}
+
+.notion-app-inner,
+.notion-sidebar-container,
+.notion-cursor-listener,
+body,
+body.notion-body,
+header,
+aside,
+aside *
+{
+  background: none !important;
+}
+
+/* 3. 布局样式 (Layout Styles) */
+main.notion-frame {
+  background: var(--color-bg-main) !important;
+  border-radius: 8px 8px 0px 0px;
+}
+
+nav.notion-sidebar-container {
+  box-shadow: none !important;
+}
+
+aside {
+  border-left: none !important;
+}
+
+/* 4. 标题*/
+.notion-page-block h1,
+.layout-content .notion-page-content h2,
+.layout-content .notion-page-content h3,
+.layout-content .notion-page-content h4 {
+  font-family: var(--theme--font_sans) !important;
+  color: var(--color-text-heading) !important;
+}
+
+/* 字体 */
+[style*="Segoe UI"] { font-family: var(--theme--font_sans) !important; }
+[style*="Georgia"] { font-family: var(--theme--font_serif) !important; }
+[style*="iawriter-mono"] { font-family: var(--theme--font_mono) !important; }
+[style*="SFMono-Regular"] { font-family: var(--theme--font_code) !important; }
+
+/* 覆盖 Notion 默认内容区背景 */
+[style*="background: rgb(247, 246, 243)"] {
+  background: var(--color-bg-main-solid) !important;
+}
+
+/* Callout - Blue (蓝色标注) */
+[style*="background:rgba(231, 243, 248, 1)"] {
+  background: var(--color-bg-callout-blue) !important;
+  color: var(--color-text-callout-blue) !important;
+}
+
+/* Callout - Yellow (黄色标注) */
+[style*="background:rgba(251, 243, 219, 1)"] {
+  background: var(--color-bg-callout-yellow) !important;
+  color: var(--color-text-callout-yellow) !important;
+}
+
+/* 统一调整不同遮罩层的透明度 */
+*[style*="background: rgba(0, 0, 0, 0.4)"],
+*[style*="background: rgba(15, 15, 15, 0.8)"],
+*[style*="background: rgba(15, 15, 15, 0.6)"],
+*[style*="background: black; opacity: 0.8;"] {
+  background: var(--color-overlay-mask) !important;
+}
+
+/* 6. 隐藏元素 (Hiding Elements)*/
+div.notion-assistant-corner-origin-container {
+  display: none !important;
+}

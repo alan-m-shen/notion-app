@@ -1,14 +1,18 @@
-const { app, BrowserWindow, BrowserView, ipcMain, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, shell, Menu, dialog, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const liquidGlass = require('electron-liquid-glass');
 
 // --- 全局变量 ---
 let mainWindow;
-let views = {}; // 存储主 BrowserView 实例 { tabId: view }
-let splitViews = {}; // 存储分屏的 BrowserView 实例 { tabId: view }
+let views = {};
+let splitViews = {};
 let activeTabId = null;
 const TAB_BAR_HEIGHT = 48;
+
+const notionThemeCSS = fs.readFileSync(path.join(__dirname, 'notion-theme.css'), 'utf8');
+
+const FAKE_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
 // --- 主窗口创建 ---
 function createWindow() {
@@ -40,10 +44,7 @@ function createWindow() {
     }
   });
 
-  // ✅ 修正①: 将事件监听器移入函数内部，确保 mainWindow 已被创建
   mainWindow.on('resize', resizeActiveViews);
-
-  // mainWindow.webContents.openDevTools();
 }
 
 // --- 核心功能函数 ---
@@ -61,7 +62,6 @@ function switchToTab(tabId) {
         }
     });
     
-    // 确保激活的视图在最上层
     mainWindow.addBrowserView(views[activeTabId]);
     if (splitViews[activeTabId]) {
         mainWindow.addBrowserView(splitViews[activeTabId]);
@@ -87,25 +87,37 @@ function resizeActiveViews() {
 }
 
 function handleViewNavigation(tabId, view) {
+  view.webContents.on('did-finish-load', () => {
+    view.webContents.insertCSS(notionThemeCSS);
+  });
+  
   view.webContents.on('page-title-updated', (event, title) => {
     mainWindow.webContents.send('tab-updated', tabId, { title });
   });
 
+  // ✅ 修正①: 更新 'will-navigate' 的逻辑
   view.webContents.on('will-navigate', (event, url) => {
     const targetUrl = new URL(url);
-    if (targetUrl.hostname.endsWith('notion.so')) return;
+    // 允许 .notion.so 和 .notion.com 的所有子域名
+    if (targetUrl.hostname.endsWith('notion.so') || targetUrl.hostname.endsWith('notion.com')) {
+      return;
+    }
+    // 其他所有链接都在外部浏览器打开
     event.preventDefault();
     shell.openExternal(url);
   });
   
+  // ✅ 修正②: 更新 setWindowOpenHandler 的逻辑
   view.webContents.setWindowOpenHandler(({ url }) => {
     const targetUrl = new URL(url);
-    if (targetUrl.hostname.endsWith('notion.so')) {
-      // 通过已经存在的 ipc handler 来创建新标签
+    // 允许 .notion.so 和 .notion.com 的所有子域名
+    if (targetUrl.hostname.endsWith('notion.so') || targetUrl.hostname.endsWith('notion.com')) {
+      // 如果是 Notion 链接，新建标签页打开
       ipcMain.handle('new-tab', null, url).then(newTab => {
         mainWindow.webContents.send('tab-created', newTab);
       });
     } else {
+      // 外部链接在默认浏览器打开
       shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -132,7 +144,10 @@ async function handleFileInject(fileType) {
 
 // --- 应用生命周期 ---
 app.whenReady().then(() => {
-  // 将菜单创建也放在 whenReady 之后
+  session.defaultSession.clearCache().then(() => {
+    console.log('Application cache has been cleared.');
+  });
+  
   const menuTemplate = [
     {
       label: 'File', submenu: [
@@ -170,9 +185,12 @@ app.on('window-all-closed', () => {
 ipcMain.handle('new-tab', async (event, url) => {
   const tabId = Date.now().toString();
   const view = new BrowserView({ webPreferences: { nodeIntegration: false, contextIsolation: true }});
+  
+  view.webContents.setUserAgent(FAKE_USER_AGENT);
+  
   views[tabId] = view;
-  switchToTab(tabId); // 先切换状态和调整其他视图
-  mainWindow.addBrowserView(view); // 再添加
+  mainWindow.addBrowserView(view);
+  switchToTab(tabId);
   view.webContents.loadURL(url || 'https://www.notion.so');
   handleViewNavigation(tabId, view);
   return { id: tabId, title: 'New Tab' };
@@ -181,14 +199,17 @@ ipcMain.handle('new-tab', async (event, url) => {
 ipcMain.on('switch-tab', (event, tabId) => switchToTab(tabId));
 
 ipcMain.on('close-tab', (event, tabId) => {
-  if (views[tabId]) {
-    mainWindow.removeBrowserView(views[tabId]);
-    views[tabId].webContents.destroy();
+  const viewToClose = views[tabId];
+  if (viewToClose) {
+    mainWindow.removeBrowserView(viewToClose);
+    viewToClose.webContents.destroy();
     delete views[tabId];
   }
-  if (splitViews[tabId]) {
-    mainWindow.removeBrowserView(splitViews[tabId]);
-    splitViews[tabId].webContents.destroy();
+  
+  const splitViewToClose = splitViews[tabId];
+  if (splitViewToClose) {
+    mainWindow.removeBrowserView(splitViewToClose);
+    splitViewToClose.webContents.destroy();
     delete splitViews[tabId];
   }
 });
@@ -196,11 +217,13 @@ ipcMain.on('close-tab', (event, tabId) => {
 ipcMain.on('split-tab', (event, tabId) => {
   if (!views[tabId] || splitViews[tabId]) return;
   const splitView = new BrowserView({ webPreferences: { nodeIntegration: false, contextIsolation: true }});
+  
+  splitView.webContents.setUserAgent(FAKE_USER_AGENT);
+  
   splitViews[tabId] = splitView;
   mainWindow.addBrowserView(splitView);
   splitView.webContents.loadURL(views[tabId].webContents.getURL());
   handleViewNavigation(tabId + '-split', splitView);
+  
   resizeActiveViews();
 });
-
-// ✅ 修正②: 从这里删除了错误的 renderer.js 代码

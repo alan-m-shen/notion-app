@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Main -> Renderer
   onTabCreated: (callback) => ipcRenderer.on('tab-created', (_event, tab) => callback(tab)),
   onTabUpdated: (callback) => ipcRenderer.on('tab-updated', (_event, tabId, details) => callback(tabId, details)),
+  onNewTabFromMenu: (callback) => ipcRenderer.on('new-tab-from-menu', () => callback())
 });
