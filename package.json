@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "electron": "^37.2.4",
+    "electron-context-menu": "^4.1.0",
     "electron-liquid-glass": "^1.0.1"
   },
   "devDependencies": {

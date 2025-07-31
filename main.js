@@ -2,6 +2,7 @@ const { app, BrowserWindow, BrowserView, ipcMain, shell, Menu, dialog, session }
 const path = require('path');
 const fs = require('fs');
 const liquidGlass = require('electron-liquid-glass');
+const contextMenu = require('electron-context-menu').default;
 
 // --- 全局变量 ---
 let mainWindow;
@@ -11,8 +12,18 @@ let activeTabId = null;
 const TAB_BAR_HEIGHT = 48;
 
 const notionThemeCSS = fs.readFileSync(path.join(__dirname, 'notion-theme.css'), 'utf8');
-
 const FAKE_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+
+// 创建一个可复用的函数来为视图启用右键菜单
+function initializeContextMenu(view) {
+  if (view && view.webContents) {
+    view.disposeContextMenu = contextMenu({
+      window: view,
+      showInspectElement: true,
+      showServices: true,
+    });
+  }
+}
 
 // --- 主窗口创建 ---
 function createWindow() {
@@ -26,8 +37,7 @@ function createWindow() {
     },
     transparent: true,
     vibrancy: false,
-    titleBarStyle: 'hidden',
-    trafficLightPosition: { x: 15, y: 15 },
+    titleBarStyle: 'hidden' // [cite: Notion-App/main.js]
   });
 
   mainWindow.loadFile('index.html');
@@ -48,7 +58,6 @@ function createWindow() {
 }
 
 // --- 核心功能函数 ---
-
 function switchToTab(tabId) {
     if (!views[tabId]) return;
     activeTabId = tabId;
@@ -95,29 +104,22 @@ function handleViewNavigation(tabId, view) {
     mainWindow.webContents.send('tab-updated', tabId, { title });
   });
 
-  // ✅ 修正①: 更新 'will-navigate' 的逻辑
   view.webContents.on('will-navigate', (event, url) => {
     const targetUrl = new URL(url);
-    // 允许 .notion.so 和 .notion.com 的所有子域名
     if (targetUrl.hostname.endsWith('notion.so') || targetUrl.hostname.endsWith('notion.com')) {
       return;
     }
-    // 其他所有链接都在外部浏览器打开
     event.preventDefault();
     shell.openExternal(url);
   });
   
-  // ✅ 修正②: 更新 setWindowOpenHandler 的逻辑
   view.webContents.setWindowOpenHandler(({ url }) => {
     const targetUrl = new URL(url);
-    // 允许 .notion.so 和 .notion.com 的所有子域名
     if (targetUrl.hostname.endsWith('notion.so') || targetUrl.hostname.endsWith('notion.com')) {
-      // 如果是 Notion 链接，新建标签页打开
       ipcMain.handle('new-tab', null, url).then(newTab => {
         mainWindow.webContents.send('tab-created', newTab);
       });
     } else {
-      // 外部链接在默认浏览器打开
       shell.openExternal(url);
     }
     return { action: 'deny' };
@@ -130,17 +132,29 @@ function handleViewNavigation(tabId, view) {
 }
 
 async function handleFileInject(fileType) {
-  if (!activeTabId || !views[activeTabId]) return dialog.showErrorBox('Error', 'No active tab to inject into.');
-  const result = await dialog.showOpenDialog(mainWindow, { properties: ['openFile'], filters: [{ name: fileType.toUpperCase(), extensions: [fileType] }] });
-  if (result.canceled) return;
+  if (!activeTabId || !views[activeTabId]) {
+    return dialog.showErrorBox('Error', 'No active tab to inject into.');
+  }
+  
+  const result = await dialog.showOpenDialog(mainWindow, { 
+    properties: ['openFile'], 
+    filters: [{ name: fileType.toUpperCase(), extensions: [fileType] }] 
+  });
+
+  if (result.canceled || result.filePaths.length === 0) return;
+  
   const filePath = result.filePaths[0];
   const content = fs.readFileSync(filePath, 'utf-8');
   const activeView = views[activeTabId];
-  if (fileType === 'css') activeView.webContents.insertCSS(content);
-  else if (fileType === 'js') activeView.webContents.executeJavaScript(content);
+
+  if (fileType === 'css') {
+    activeView.webContents.insertCSS(content);
+  } else if (fileType === 'js') {
+    activeView.webContents.executeJavaScript(content);
+  }
+  
   dialog.showMessageBox(mainWindow, { message: `Successfully injected ${path.basename(filePath)}.` });
 }
-
 
 // --- 应用生命周期 ---
 app.whenReady().then(() => {
@@ -172,27 +186,35 @@ app.whenReady().then(() => {
   createWindow();
 });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
-});
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
 
 // --- IPC 事件监听 ---
 ipcMain.handle('new-tab', async (event, url) => {
   const tabId = Date.now().toString();
-  const view = new BrowserView({ webPreferences: { nodeIntegration: false, contextIsolation: true }});
+  const view = new BrowserView({ 
+    webPreferences: { 
+      nodeIntegration: false, 
+      contextIsolation: true 
+    }
+  });
+  
+  initializeContextMenu(view);
   
   view.webContents.setUserAgent(FAKE_USER_AGENT);
   
   views[tabId] = view;
   mainWindow.addBrowserView(view);
   switchToTab(tabId);
+  
   view.webContents.loadURL(url || 'https://www.notion.so');
   handleViewNavigation(tabId, view);
+  
   return { id: tabId, title: 'New Tab' };
 });
 
@@ -201,6 +223,9 @@ ipcMain.on('switch-tab', (event, tabId) => switchToTab(tabId));
 ipcMain.on('close-tab', (event, tabId) => {
   const viewToClose = views[tabId];
   if (viewToClose) {
+    if (typeof viewToClose.disposeContextMenu === 'function') {
+      viewToClose.disposeContextMenu();
+    }
     mainWindow.removeBrowserView(viewToClose);
     viewToClose.webContents.destroy();
     delete views[tabId];
@@ -208,6 +233,9 @@ ipcMain.on('close-tab', (event, tabId) => {
   
   const splitViewToClose = splitViews[tabId];
   if (splitViewToClose) {
+    if (typeof splitViewToClose.disposeContextMenu === 'function') {
+      splitViewToClose.disposeContextMenu();
+    }
     mainWindow.removeBrowserView(splitViewToClose);
     splitViewToClose.webContents.destroy();
     delete splitViews[tabId];
@@ -216,7 +244,15 @@ ipcMain.on('close-tab', (event, tabId) => {
 
 ipcMain.on('split-tab', (event, tabId) => {
   if (!views[tabId] || splitViews[tabId]) return;
-  const splitView = new BrowserView({ webPreferences: { nodeIntegration: false, contextIsolation: true }});
+  
+  const splitView = new BrowserView({ 
+    webPreferences: { 
+      nodeIntegration: false, 
+      contextIsolation: true 
+    }
+  });
+  
+  initializeContextMenu(splitView);
   
   splitView.webContents.setUserAgent(FAKE_USER_AGENT);
   
